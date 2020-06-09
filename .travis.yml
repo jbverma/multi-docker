@@ -1,0 +1,36 @@
+sudo: required
+services:
+  - docker
+
+before_install:
+  - docker build -t jbverma/react-test -f ./client/Dockerfile.dev ./client
+
+script:
+  # -e CI=true is needed to shutdown after test
+  - docker run -e CI=true jbverma/react-test npm run test -- --coverage
+
+after_success:
+  - docker build -t jbverma/multi-docker-client ./client
+  - docker build -t jbverma/multi-docker-nginx ./nginx
+  - docker build -t jbverma/multi-docker-server ./server
+  - docker build -t jbverma/multi-docker-worker ./worker
+  # Login to docker CLI
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_ID" --password-stdin
+  # Take those images and push them to docker hub
+  - docker push jbverma/multi-docker-client
+  - docker push jbverma/multi-docker-nginx
+  - docker push jbverma/multi-docker-server
+  - docker push jbverma/multi-docker-worker
+
+#deploy:
+#  provider: elasticbeanstalk
+#  region: "us-west-2"
+#  app: "docker-react"
+#  env: "Docker-env"
+#  bucket_name: "<s3 bucket name>"
+#  bucket_path: "docker-react"
+#  on:
+#    branch: master
+#  access_key_id: $AWS_ACCESS_KEY
+#  secret_access_key:
+#    secure: "$AWS_SECRET_KEY"
